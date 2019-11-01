@@ -8,7 +8,9 @@ using namespace std;
 using namespace Eigen;
 class Unlearn {
 private:
+	// 識別するクラス数
 	const int class_num;
+	// 一クラス事のコンポーネント数
 	const int component_num;
 	// 平均値　mean[class][component][data]
 	vector<vector<vector<double>>> mean;
@@ -22,6 +24,7 @@ private:
 	const double unlearn_mix_deg;
 	// 未学習クラスに対する謎の正規化項？
 	const double normalize_unlearn;
+	// 入力データを入れる2次元配列
 	vector<vector<double>> input_data;
 	// betaの閾値
 	const double beta_threshold;
@@ -38,7 +41,13 @@ private:
 	const double complementary_covar_coef;
 	// デバック用
 	ofstream ofs;
-
+	/**
+	 * ガウス確率の算出
+	 * 
+	 * @param input 入力1データ分
+	 * @param mean 平均EigenのVecterXd型
+	 * @param covar 分散行列EigenのMatrixXd型
+	 */
 	double gauss(vector<double>& input, const VectorXd& mean, const MatrixXd& covar);
 	void k_means(const vector<vector<double>>& input, vector<int>& class_label, const int class_num, const int max_times);
 	double hgauss(vector<double>& input, VectorXd& mean, MatrixXd& covar);
