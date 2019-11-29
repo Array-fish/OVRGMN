@@ -1,26 +1,3 @@
-/*
-2019/06/04
-出力までは書いたから，誤差関数を出すところを書いてほしい．
-まだ生の確率しか出せていないからね．
-最終的な目標は各パラメータがどんな役割を果たすか見ること
-だからグラフを出したいからmean,covarとかの値をどっかのファイルに保存してやりたい
-2019/06/11
-途中からenergyがすべて0になるからβの学習が出来てない．
-原因を探れ，入力と平均は大丈夫だったから分散が怪しいかも
-2018/06/18
-迎田さんにどうせなら全部Pythonで書き直せと言われたのでこのコードを丸写しするつもり，
-それに伴い，リファクタリングをします．(そもそも正しく動いてないけど．)
-もともとのコードはファイルにまとめてプロジェクトのディレクトリのどっかしらにおいておきます．
-*/
-/*
-20191101
-とりあえず，教師データを1000*4にして学習を走らせろ
-それで出来たunlearnのやつを確認して教師データとバイナリに変換して．
-あと，新しく作ったofsのやつ消しといて，あれまったく意味ない．
-*/
-/* 2019/11/09
-テストデータを正規化したりする処理をしていない．テストデータを変えないとダメかも
-*/
 #define aCREATE_FROM_FILE
 #include"Header.h"
 #include"utils.h"
@@ -34,10 +11,10 @@ vector<vector<double>> get_vector_from_file(const string filename);
 vector<int> make_rand_array_unique(const size_t size, int rand_min, int rand_max);
 int main() {
 	// データを取り込み　学習データ，その正解クラスのデータ
-	vector<vector<double>> learn_data = get_vector_from_file("normalized_csv\\learn_data000.csv");
-	vector<vector<double>> class_data = get_vector_from_file("normalized_csv\\learn_class_data.csv");
-	vector<vector<double>> test_data = get_vector_from_file("normalized_csv\\test_data000.csv");
-	vector<vector<double>> test_class_data = get_vector_from_file("normalized_csv\\test_class_data.csv");
+	vector<vector<double>> learn_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_lea_sig.csv");
+	vector<vector<double>> class_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_lea_cls.csv");
+	vector<vector<double>> test_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_dis_sig2.csv");
+	vector<vector<double>> test_class_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_dis_cls2.csv");
 #ifndef CREATE_FROM_FILE
 	// モデルの条件
 	std::random_device rnd;     // 非決定的な乱数生成器でシード生成機を生成

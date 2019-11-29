@@ -50,11 +50,9 @@ private:
 	bool is_approximate;
 	// デバック用, Flor use ofstream through multiple methods.
 	ofstream class_ofs;
-	// デバッグ用20191101
-	ofstream ofs000,ofs001;
 	// For file output, time prefix
 	const string time_prefix;
-	
+	// set data size to create instance from file.
 	void set_data_size(int data_size);
 	/**
 	 * ガウス確率の算出
@@ -69,7 +67,7 @@ private:
 	void get_mean_covar(vector<vector<double>>& input, vector<double>& mean, vector<vector<double>>& covar);
 	// NOTE:学習時に使う
 	void calc_probability_learn(vector<double>& input_data, vector<double>& rtn_cls_probability);
-	void test();
+	// void test();GIVE UP
 	void open_class_csv(const string filename);
 	// NOTE:approximate function
 	double approximate_exp(double val);

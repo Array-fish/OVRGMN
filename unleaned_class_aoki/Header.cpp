@@ -9,6 +9,7 @@
 #include<limits>
 #include<cmath>
 #include<iostream>
+#include<iomanip>
 #include<fstream>
 #include<direct.h>
 //#include<cmath>
@@ -25,7 +26,7 @@ Unlearn::Unlearn(const int class_num, const int component_num, const double init
 	, delta_beta(delta_beta)
 	, complementary_covar_coef(complementary_covar_coef)
 	, is_approximate(false)
-	, time_prefix("outfile\\"+get_date_sec())
+	, time_prefix("..\\..\\unlearned_files\\" + get_date_sec())
 {
 	mean = vector<vector<vector<double>>>(class_num, vector<vector<double>>(component_num));
 	covar = vector<vector<vector<vector<double>>>>(class_num, vector<vector<vector<double>>>(component_num));
@@ -51,7 +52,7 @@ Unlearn::Unlearn(const int class_num, const int component_num, const int data_si
 	, delta_beta(delta_beta)
 	, complementary_covar_coef(complementary_covar_coef)
 	, is_approximate(false)
-	, time_prefix("outfile\\" + get_date_sec())
+	, time_prefix("..\\..\\unlearned_files\\" + get_date_sec())
 {
 	mean = vector<vector<vector<double>>>(class_num, vector<vector<double>>(component_num,vector<double>(data_size)));
 	covar = vector<vector<vector<vector<double>>>>(class_num, vector<vector<vector<double>>>(component_num,vector<vector<double>>(data_size,vector<double>(data_size))));
@@ -289,7 +290,7 @@ int Unlearn::gauss_test() {
 	}
 	// 出てきた数字を目視で確認したけど，正直あってるかわからない．
 	// ここの部分もっとちゃんとしたってるか調べる方法が欲しい．
-	ofstream ofs("out_file\\gauss_test_001.csv");
+	ofstream ofs(time_prefix + "\\gauss_test_001.csv");
 	for (int x = 0; x <= grid_div; ++x) {
 		for (int y = 0; y <= grid_div; ++y) {
 			ofs << output_list[x * (grid_div + 1) + y] <<",";
@@ -346,7 +347,7 @@ int Unlearn::hgauss_test() {
 	}
 	// 出てきた数字を目視で確認したけど，正直あってるかわからない．
 	// ここの部分もっとちゃんとしたってるか調べる方法が欲しい．
-	ofstream ofs("out_file\\hgauss_test_003.csv");
+	ofstream ofs(time_prefix + "\\hgauss_test_003.csv");
 	for (int x = 0; x <= grid_div; ++x) {
 		for (int y = 0; y <= grid_div; ++y) {
 			ofs << output_list[x * (grid_div + 1) + y] << ",";
@@ -514,19 +515,12 @@ void Unlearn::calc_probability_learn(vector<double>& input_data, vector<double>&
 	}
 	rtn_cls_probability = class_probability;
 }
-void Unlearn::test() {
-	//VectorXd mu = { 1 };
-}
+//void Unlearn::test() {
+//	//VectorXd mu = { 1 };
+//}
 void Unlearn::open_class_csv(const string filename) {
 	class_ofs.open(filename);	if (class_ofs.fail()) {throw "can't opne " + filename;}
 }
-void Unlearn::open_csv000(const string filename) {
-	ofs000.open(filename);	if (ofs000.fail()) { throw "can't opne " + filename; }
-}
-void Unlearn::open_csv001(const string filename) {
-	ofs001.open(filename);	if (ofs001.fail()) { throw "can't opne " + filename; }
-}
-
 // 確率分布を出すのに必要な各種の値をファイルに保存する．
 void Unlearn::out_file_mean_covar_params() const{
 	// 平均の保存
@@ -543,7 +537,7 @@ void Unlearn::out_file_mean_covar_params() const{
 	}
 	ofs.close();
 	// 共分散の保存
-	filename =time_prefix + "\\covar.csv";
+	filename = time_prefix + "\\covar.csv";
 	ofs.open(filename); if (ofs.fail()) { throw "can't opne " + filename; }
 	for (int cls = 0; cls < class_num; ++cls) {
 		for (int com = 0; com < component_num; ++com) {
@@ -615,7 +609,7 @@ vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, con
 		result[cls][1] = static_cast<double>(class_true_positive[cls]) / (class_true_positive[cls] + class_false_positive[cls]);
 		result[cls][2] = static_cast<double>(class_true_positive[cls]) / (class_true_positive[cls] + class_false_negative[cls]);
 		result[cls][3] = 2 * result[cls][1] * result[cls][2] / (result[cls][1] + result[cls][2]);
-		cout << "class: " << cls << ", accuracy: " << result[cls][0] << ", presicion: " << result[cls][1]
+		cout << "class: " << setw(3) << cls << ", accuracy: " << result[cls][0] << ", presicion: " << result[cls][1]
 			<< ", recall: " << result[cls][2] << ", F-measure:" << result[cls][3] << endl;
 	}
 	if (output2csv) {
