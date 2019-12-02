@@ -66,7 +66,8 @@ int main() {
 		beta_threshold, delta_beta, ccomplementary_covar_coef);
 	uln.load_file_mean_covar_mixdeg(file_directory);
 #endif
-	uln.set_approximate(true);
+	// uln.set_approximate(true);
+	
 	// 学習データを　beta出すための検証データと普通の最尤法のための学習データに分ける．
 	// とりあえず学習データの半分を検証用データに使う
 	vector<int> verification_index;

@@ -65,8 +65,6 @@ private:
 	void k_means(const vector<vector<double>>& input, vector<int>& class_label, const int class_num, const int max_times);
 	double hgauss(vector<double>& input, VectorXd& mean, MatrixXd& covar);
 	void get_mean_covar(vector<vector<double>>& input, vector<double>& mean, vector<vector<double>>& covar);
-	// NOTE:学習時に使う
-	void calc_probability_learn(vector<double>& input_data, vector<double>& rtn_cls_probability);
 	// void test();GIVE UP
 	void open_class_csv(const string filename);
 	// NOTE:approximate function
@@ -94,8 +92,6 @@ public:
 	// NOTE:記録用　平均と分散とそのた算出に必要なパラメータを入れた
 	void out_file_mean_covar_params() const;
 	void load_file_mean_covar_mixdeg(const string file_directory); 
-	void open_csv000(const string filename);
-	void open_csv001(const string filename);
 	void set_approximate(bool is_approximate);
 	string get_time_prefix() const;
 };

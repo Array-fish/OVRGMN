@@ -408,26 +408,32 @@ int Unlearn::get_mean_covar_test() {
 	return 0;
 }
 void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector<double>> &verification_class_data) {
-	// デバック用
+	// NOTE: デバック用
 	for (int cls = 0; cls < class_num; ++cls) {
 		ofstream ofs(time_prefix + "\\class"+to_string(cls)+"beta.csv");
 		check_open_file(ofs, time_prefix + "\\class" + to_string(cls) + "beta.csv");
 		double energy = 0;
-		class_beta[cls] -= delta_beta;// 最初に足しちゃうから先にひいてるよ
+		class_beta[cls] -= delta_beta;// NOTE: 最初に足しちゃうから先にひいてるよ
 		int times = 0;
 		double previous_energy = 0;
 		while (energy <= beta_threshold && (times++) < 150) {
-			energy = 0;// エネルギー関数初期化
-			class_beta[cls] += delta_beta;// βをちょっと増やす
+			energy = 0;// NOTE: エネルギー関数初期化
+			int cls_data_cnt = 0;
+			class_beta[cls] += delta_beta;// NOTE:βをちょっと増やす
 			cout << "class:"<<cls<<", times:" << times << " beta:" << class_beta[cls] << endl;// デバック用
 			for (int d = 0; d < verification_data.size(); ++d) {
 				vector<double> prob;
-				calc_probability_learn(verification_data[d], prob);
-				for (int tmp_cls = 0; tmp_cls < class_num; ++tmp_cls) {
-					energy += verification_class_data[d][tmp_cls] * prob[tmp_cls];
+				calc_probability(verification_data[d], prob);
+				// NOTE: 正解がこのクラス
+				if (verification_class_data[d][cls] == 1) {
+					cls_data_cnt++;
+					// NOTE: このクラスの確率が一番高い
+					if (distance(prob.begin(), max_element(prob.begin(), prob.end())) == cls + 1) {
+						energy += 1;
+					}
 				}
 			}
-			energy /= verification_data.size();
+			energy /= cls_data_cnt;
 			cout << "times:" << times << " " << TO_STRING(energy) << ":" << energy << endl;
 			string rec = to_string(times) + "," + to_string(class_beta[cls]) + "," + to_string(energy);
 			ofs << rec << endl;
@@ -484,36 +490,6 @@ void Unlearn::calc_probability(vector<double> &input_data, vector<double> &rtn_c
 		tmp.push_back(class_probability[cls]);
 	}
 	rtn_cls_probability = tmp;
-}
-void Unlearn::calc_probability_learn(vector<double>& input_data, vector<double>& rtn_cls_probability) {
-	vector<double> class_probability(class_num, 0);
-	double sum_all_probability = 0;
-	for (int cls = 0; cls < class_num; ++cls) {
-		for (int com = 0; com < component_num; ++com) {
-			// クラス確率の計算用，平均と分散の変換
-			VectorXd mean_eigen = Map<VectorXd>(&mean[cls][com][0], mean[cls][com].size());
-			vector<double> tmp;// eigenのMap<>の機能を
-			for (int col = 0; col < covar[cls][com].size(); ++col) {
-				for (int row = 0; row < covar[cls][com][0].size(); ++row) {
-					tmp.push_back(covar[cls][com][row][col]);
-				}
-			}
-			MatrixXd sigma_eigen = Map<MatrixXd>(&tmp[0], covar[cls][com].size(), covar[cls][com][0].size());
-			// 学習クラスの確率算出
-			MatrixXd beta_sigma = class_beta[cls] * sigma_eigen;
-			double tmp_gauss = gauss(input_data, mean_eigen, beta_sigma);
-			class_probability[cls] += mix_deg[cls][com] * tmp_gauss;
-		}
-		sum_all_probability += class_probability[cls];
-		if (sum_all_probability == 0) {
-			// ここに入るってことは3クラスの算出確率がすべて0になってるってことなんだけど，そんなんある？
-			sum_all_probability = 0.0000000001;// コレやっていいのかわからん
-		}
-	}
-	for (int cls = 0; cls < class_num; ++cls) {
-		class_probability[cls] /= sum_all_probability;
-	}
-	rtn_cls_probability = class_probability;
 }
 //void Unlearn::test() {
 //	//VectorXd mu = { 1 };
