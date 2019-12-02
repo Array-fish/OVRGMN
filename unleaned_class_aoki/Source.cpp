@@ -11,10 +11,10 @@ vector<vector<double>> get_vector_from_file(const string filename);
 vector<int> make_rand_array_unique(const size_t size, int rand_min, int rand_max);
 int main() {
 	// データを取り込み　学習データ，その正解クラスのデータ
-	vector<vector<double>> learn_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_lea_sig.csv");
-	vector<vector<double>> class_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_lea_cls.csv");
-	vector<vector<double>> test_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_dis_sig2.csv");
-	vector<vector<double>> test_class_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\001_dis_cls2.csv");
+	vector<vector<double>> learn_data      = get_vector_from_file("..\\..\\unlearned_files\\created_data\\004_learn_data.csv");
+	vector<vector<double>> class_data      = get_vector_from_file("..\\..\\unlearned_files\\created_data\\004_learn_class_data.csv");
+	vector<vector<double>> test_data       = get_vector_from_file("..\\..\\unlearned_files\\created_data\\004_test_data.csv");
+	vector<vector<double>> test_class_data = get_vector_from_file("..\\..\\unlearned_files\\created_data\\004_test_class_data.csv");
 #ifndef CREATE_FROM_FILE
 	// モデルの条件
 	std::random_device rnd;     // 非決定的な乱数生成器でシード生成機を生成
@@ -25,17 +25,18 @@ int main() {
 	// beta:乱数, unlearn_mixing_degree:alpha_0 これは適当．今は0.01,  normalize_unlearn:未学習クラスの正規化項．これは論文の値
 	// beta_threshold:βを決めるときの閾値．論文の値, beta_delta:βを決めるときの変化量．論文の値, 
 	// complementary_covar_coef:h_gaussを算出するときの値．論文の値,
-	const int class_num = 3;
-	const int component_num = 2;
-	const double unlearn_mix_deg = 0.01;
+	const int    class_num         = 3;
+	const int    component_num     = 2;
+	const double unlearn_mix_deg   = 0.01;
 	const double normalize_unlearn = 0.5;
-	const double beta_threshold = 0.99;
-	const double delta_beta = 0.01;
+	const double beta_threshold    = 0.99;
+	const double delta_beta        = 0.01;
 	const double complementary_covar_coef = 10.0;
 	Unlearn uln(class_num, component_num, beta_0(engine), unlearn_mix_deg,
 		normalize_unlearn, beta_threshold, delta_beta, complementary_covar_coef);
 #else
-	const string file_directory = "infile";
+	// NOTE:ここは出力部との対応が取れているか確かめること．
+	const string file_directory = "..\\..\\unlearned_files\\2019_12_1_18_26_51";
 	// prepare variables
 	string filename;
 	ifstream ifs;
@@ -45,13 +46,13 @@ int main() {
 	ifs.open(filename); if (ifs.fail()) { throw "can't opne " + filename; }
 	getline(ifs, line); getline(ifs, line); // NOTE: Pass headers.
 	vector<string> load_params = split(line, ',');
-	const int class_num = stoi(load_params[0]);
-	const int component_num = stoi(load_params[1]);
-	const int data_size = stoi(load_params[2]);
-	const double unlearn_mix_deg = stod(load_params[3]);
+	const int    class_num         = stoi(load_params[0]);
+	const int    component_num     = stoi(load_params[1]);
+	const int    data_size         = stoi(load_params[2]);
+	const double unlearn_mix_deg   = stod(load_params[3]);
 	const double normalize_unlearn = stod(load_params[4]);
-	const double beta_threshold = stod(load_params[5]);
-	const double delta_beta = stod(load_params[6]);
+	const double beta_threshold    = stod(load_params[5]);
+	const double delta_beta        = stod(load_params[6]);
 	const double ccomplementary_covar_coef = stod(load_params[7]);
 	getline(ifs, line); getline(ifs, line);
 	load_params = split(line, ',');
@@ -136,7 +137,8 @@ int main() {
 vector<vector<double>> get_vector_from_file(const string filename) {
 	ifstream ifs(filename);
 	if (ifs.fail()) {
-		throw "Can't open " + filename;
+		cerr << "Can't open " + filename << endl;
+		exit(-1);
 	}
 	string str, str1;
 	vector<vector<double>> data;

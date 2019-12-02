@@ -418,16 +418,16 @@ void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector
 		double previous_energy = 0;
 		while (energy <= beta_threshold && (times++) < 150) {
 			energy = 0;// エネルギー関数初期化
-			int cls_data_cnt = 0; // Count class data
 			class_beta[cls] += delta_beta;// βをちょっと増やす
 			cout << "class:"<<cls<<", times:" << times << " beta:" << class_beta[cls] << endl;// デバック用
 			for (int d = 0; d < verification_data.size(); ++d) {
 				vector<double> prob;
 				calc_probability_learn(verification_data[d], prob);
-				energy += verification_class_data[d][cls] * prob[cls];
-				cls_data_cnt += verification_class_data[d][cls];
+				for (int tmp_cls = 0; tmp_cls < class_num; ++tmp_cls) {
+					energy += verification_class_data[d][tmp_cls] * prob[tmp_cls];
+				}
 			}
-			energy /= cls_data_cnt;
+			energy /= verification_data.size();
 			cout << "times:" << times << " " << TO_STRING(energy) << ":" << energy << endl;
 			string rec = to_string(times) + "," + to_string(class_beta[cls]) + "," + to_string(energy);
 			ofs << rec << endl;
@@ -609,15 +609,43 @@ vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, con
 		result[cls][1] = static_cast<double>(class_true_positive[cls]) / (class_true_positive[cls] + class_false_positive[cls]);
 		result[cls][2] = static_cast<double>(class_true_positive[cls]) / (class_true_positive[cls] + class_false_negative[cls]);
 		result[cls][3] = 2 * result[cls][1] * result[cls][2] / (result[cls][1] + result[cls][2]);
-		cout << "class: " << setw(3) << cls << ", accuracy: " << result[cls][0] << ", presicion: " << result[cls][1]
-			<< ", recall: " << result[cls][2] << ", F-measure:" << result[cls][3] << endl;
+		cout << "class: " << setw(3) << cls 
+			<<", accuracy: "   << fixed << setprecision(8) << result[cls][0] 
+			<< ", presicion: " << fixed << setprecision(8) << result[cls][1]
+			<< ", recall: "    << fixed << setprecision(8) << result[cls][2] 
+			<< ", F-measure:"  << fixed << setprecision(8) << result[cls][3] << endl;
 	}
+	vector<double> macro_average(4, 0.0);
+	for (int i = 0; i < 4; ++i) {
+		for (int cls = 0; cls < class_num + 1; cls++) {
+			macro_average[i] += result[cls][i];
+		}
+		macro_average[i] /= (class_num + 1);
+	}
+	cout << "macro_average" << endl
+		<< "accuracy: " << fixed << setprecision(8) << macro_average[0] << endl
+		<< "presicion: " << fixed << setprecision(8) << macro_average[1] << endl
+		<< "recall: " << fixed << setprecision(8) << macro_average[2] << endl
+		<< "F-measure(ave): " << fixed << setprecision(8) << macro_average[3] << endl
+		<< "F-measure(calc): " << fixed << setprecision(8)
+		<< 2 * macro_average[1] * macro_average[2] / (macro_average[1] + macro_average[2]) << endl;
+	double micro_average = accumulate(class_true_positive.begin(), class_true_positive.end(), 0.0) / test_data.size();
+	cout << "micro_average: " << fixed << setprecision(8) << micro_average << endl;
 	if (output2csv) {
 		ofstream ofs(time_prefix + "\\evaluate.csv");
 		ofs << "class,accuracy,presicion,recall,F-measure" << endl;
 		for (int cls = 0; cls < class_num + 1; ++cls) {
 			ofs << cls << "," << result[cls][0] << "," << result[cls][1] << "," << result[cls][2] << "," << result[cls][3] << endl;
 		}
+		ofs << "macro_average" << endl
+			<< "accuracy," << macro_average[0] << endl
+			<< "presicion," << macro_average[1] << endl
+			<< "recall," << macro_average[2] << endl
+			<< "F-measure(ave)," << macro_average[3] << endl
+			<< "F-measure(calc),"
+			<< 2 * macro_average[1] * macro_average[2] / (macro_average[1] + macro_average[2]) << endl;
+		double micro_average = accumulate(class_true_positive.begin(), class_true_positive.end(), 0.0) / test_data.size();
+		ofs << "micro_average," << micro_average << endl;
 	}
 	return result;
 	
