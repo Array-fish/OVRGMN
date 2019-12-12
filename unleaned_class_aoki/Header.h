@@ -1,4 +1,3 @@
-// TODO:パラメータの出力処理が個々の関数の中でやっているのとopen_csvでやっているのとで分かれているので統一した方が良い
 #pragma once
 #ifndef HEADER_H
 #define HEADER_H

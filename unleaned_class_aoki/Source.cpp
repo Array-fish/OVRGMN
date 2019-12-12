@@ -36,14 +36,14 @@ int main() {
 		normalize_unlearn, beta_threshold, delta_beta, complementary_covar_coef);
 #else
 	// NOTE:‚±‚±‚Ío—Í•”‚Æ‚Ì‘Î‰‚ªæ‚ê‚Ä‚¢‚é‚©Šm‚©‚ß‚é‚±‚ÆD
-	const string file_directory = "..\\..\\unlearned_files\\2019_12_1_18_26_51";
+	const string file_directory = "..\\..\\unlearned_files\\no_approximate\\2019_12_3_13_11_41";
 	// prepare variables
 	string filename;
 	ifstream ifs;
 	string line;
 	// load parameters and beta, then create new instance.
 	filename = file_directory + "\\params.csv";
-	ifs.open(filename); if (ifs.fail()) { throw "can't opne " + filename; }
+	ifs.open(filename); if (ifs.fail()) { cerr << "can't opne " + filename << endl; exit(-1); }
 	getline(ifs, line); getline(ifs, line); // NOTE: Pass headers.
 	vector<string> load_params = split(line, ',');
 	const int    class_num         = stoi(load_params[0]);

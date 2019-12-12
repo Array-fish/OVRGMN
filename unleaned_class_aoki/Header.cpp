@@ -358,7 +358,7 @@ int Unlearn::hgauss_test() {
 	}
 	return 0;
 }
-void Unlearn::get_mean_covar(vector<vector<double>>& input, vector<double> &mean, vector<vector<double>> & sigma) {
+void Unlearn::get_mean_covar(vector<vector<double>>& input, vector<double> &mean, vector<vector<double>> & covar) {
 	const int input_data_size = input[0].size();
 	mean.resize(input_data_size);
 	// 平均
@@ -372,12 +372,15 @@ void Unlearn::get_mean_covar(vector<vector<double>>& input, vector<double> &mean
 		}
 	}
 	// 共分散行列 ここ平均の掛け算で行けるはず　時間があったら変えて
-	sigma = vector<vector<double>>(input_data_size, vector<double>(input_data_size, 0));
+	covar = vector<vector<double>>(input_data_size, vector<double>(input_data_size, 0));
 	for (int row = 0; row < deviation_data[0].size(); ++row) {
 		for (int cols = row; cols < deviation_data[0].size(); ++cols) {
-			double var = accumulate(deviation_data.begin(), deviation_data.end(), 0.0, [&row, &cols](double acc, vector<double>& vec) {return acc + vec[row] * vec[cols]; }) / deviation_data.size();
-			sigma[row][cols] = var;
-			sigma[cols][row] = var;
+			double var = 0;
+			if (deviation_data.size() > 1) {
+				double var = accumulate(deviation_data.begin(), deviation_data.end(), 0.0, [&row, &cols](double acc, vector<double>& vec) {return acc + vec[row] * vec[cols]; }) / (deviation_data.size() - 1);
+			}
+			covar[row][cols] = var;
+			covar[cols][row] = var;
 		}
 	}
 }
@@ -420,7 +423,7 @@ void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector
 			energy = 0;// NOTE: エネルギー関数初期化
 			int cls_data_cnt = 0;
 			class_beta[cls] += delta_beta;// NOTE:βをちょっと増やす
-			cout << "class:"<<cls<<", times:" << times << " beta:" << class_beta[cls] << endl;// デバック用
+			cout << "class:"<<cls<<", times:" << times << " beta:" << class_beta[cls];// NOTE:デバック用
 			for (int d = 0; d < verification_data.size(); ++d) {
 				vector<double> prob;
 				calc_probability(verification_data[d], prob);
@@ -434,11 +437,11 @@ void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector
 				}
 			}
 			energy /= cls_data_cnt;
-			cout << "times:" << times << " " << TO_STRING(energy) << ":" << energy << endl;
+			cout << " " << TO_STRING(energy) << ":" << energy << endl;
 			string rec = to_string(times) + "," + to_string(class_beta[cls]) + "," + to_string(energy);
 			ofs << rec << endl;
-			if (energy <= previous_energy) 
-				break;
+			/*if (energy <= previous_energy) 
+				break;*/
 			previous_energy = energy;
 		}
 	}
@@ -550,17 +553,20 @@ void Unlearn::out_file_mean_covar_params() const{
 	ofs.close();
 }
 /*
- * NOTE:calculate accuracy and presicion, recall, F-measure
+ * NOTE:calculate accuracy and precision, recall, F-measure
 */
 vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, const vector<vector<double>>& class_data, 
 	const bool output2csv){
 	vector<int> class_true_positive(class_num + 1, 0), class_true_negative(class_num + 1, 0),
 		        class_false_positive(class_num + 1, 0), class_false_negative(class_num + 1, 0);
+	// NOTE:confusion_matrix[true_class][predicted_class]
+	vector<vector<int>> confusion_matrix(class_num + 1, vector<int>(class_num + 1, 0));
 	for (int d = 0; d < test_data.size(); ++d) {
 		vector<double> prob;
 		calc_probability(test_data[d], prob);
 		int max_class_index = distance(class_data[d].begin(), max_element(class_data[d].begin(), class_data[d].end()));
 		int max_prob_index = distance(prob.begin(), max_element(prob.begin(), prob.end()));
+		confusion_matrix[max_class_index][max_prob_index]++;
 		if (max_class_index == max_prob_index) {
 			class_true_positive[max_class_index]++;
 			for (int cls = 0; cls <= class_num; ++cls){
@@ -577,7 +583,16 @@ vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, con
 			}
 		}
 	}
-	// NOTE:result[class][indeces] Indeces's order is [accuracy, presicion, recall, F-measure]
+	std::cout << "confusion_matrix" << endl;
+	std::cout << "         class_0  class_1  class_2  class_3" << endl;
+	for (int true_cls = 0; true_cls <= class_num; ++true_cls) {
+		std::cout << "class_" << to_string(true_cls);
+		for (int pred_cls = 0; pred_cls <= class_num; ++pred_cls) {
+			std::cout << "     "<<setw(4) << confusion_matrix[true_cls][pred_cls];
+		}
+		std::cout << std::endl;
+	}
+	// NOTE:result[class][indeces] Indeces's order is [accuracy, precision, recall, F-measure]
 	vector<vector<double>> result(class_num + 1, vector<double>(4, 0.0));
 	for (int cls = 0; cls < class_num + 1; ++cls) {
 		result[cls][0] = static_cast<double>(class_true_positive[cls] + class_true_negative[cls])
@@ -585,9 +600,9 @@ vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, con
 		result[cls][1] = static_cast<double>(class_true_positive[cls]) / (class_true_positive[cls] + class_false_positive[cls]);
 		result[cls][2] = static_cast<double>(class_true_positive[cls]) / (class_true_positive[cls] + class_false_negative[cls]);
 		result[cls][3] = 2 * result[cls][1] * result[cls][2] / (result[cls][1] + result[cls][2]);
-		cout << "class: " << setw(3) << cls 
+		std::cout << "class: " << setw(3) << cls 
 			<<", accuracy: "   << fixed << setprecision(8) << result[cls][0] 
-			<< ", presicion: " << fixed << setprecision(8) << result[cls][1]
+			<< ", precision: " << fixed << setprecision(8) << result[cls][1]
 			<< ", recall: "    << fixed << setprecision(8) << result[cls][2] 
 			<< ", F-measure:"  << fixed << setprecision(8) << result[cls][3] << endl;
 	}
@@ -598,24 +613,31 @@ vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, con
 		}
 		macro_average[i] /= (class_num + 1);
 	}
-	cout << "macro_average" << endl
+	std::cout << "macro_average" << endl
 		<< "accuracy: " << fixed << setprecision(8) << macro_average[0] << endl
-		<< "presicion: " << fixed << setprecision(8) << macro_average[1] << endl
+		<< "precision: " << fixed << setprecision(8) << macro_average[1] << endl
 		<< "recall: " << fixed << setprecision(8) << macro_average[2] << endl
 		<< "F-measure(ave): " << fixed << setprecision(8) << macro_average[3] << endl
 		<< "F-measure(calc): " << fixed << setprecision(8)
 		<< 2 * macro_average[1] * macro_average[2] / (macro_average[1] + macro_average[2]) << endl;
 	double micro_average = accumulate(class_true_positive.begin(), class_true_positive.end(), 0.0) / test_data.size();
-	cout << "micro_average: " << fixed << setprecision(8) << micro_average << endl;
+	std::cout << "micro_average: " << fixed << setprecision(8) << micro_average << endl;
 	if (output2csv) {
 		ofstream ofs(time_prefix + "\\evaluate.csv");
-		ofs << "class,accuracy,presicion,recall,F-measure" << endl;
+		ofs << "confusion matrix" << endl;
+		for (int true_cls = 0; true_cls <= class_num; ++true_cls) {
+			for (int pred_cls = 0; pred_cls <= class_num; ++pred_cls) {
+				ofs << confusion_matrix[true_cls][pred_cls]<<",";
+			}
+			ofs << std::endl;
+		}
+		ofs << "class,accuracy,precision,recall,F-measure" << endl;
 		for (int cls = 0; cls < class_num + 1; ++cls) {
 			ofs << cls << "," << result[cls][0] << "," << result[cls][1] << "," << result[cls][2] << "," << result[cls][3] << endl;
 		}
 		ofs << "macro_average" << endl
 			<< "accuracy," << macro_average[0] << endl
-			<< "presicion," << macro_average[1] << endl
+			<< "precision," << macro_average[1] << endl
 			<< "recall," << macro_average[2] << endl
 			<< "F-measure(ave)," << macro_average[3] << endl
 			<< "F-measure(calc),"
