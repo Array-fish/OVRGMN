@@ -49,6 +49,8 @@ private:
 	bool is_approximate;
 	// デバック用, Flor use ofstream through multiple methods.
 	ofstream class_ofs;
+	// for logging release
+	ofstream log_ofs;
 	// For file output, time prefix
 	const string time_prefix;
 	// set data size to create instance from file.
@@ -60,7 +62,7 @@ private:
 	 * @param mean 平均EigenのVecterXd型
 	 * @param covar 分散行列EigenのMatrixXd型
 	 */
-	double gauss(vector<double>& input, const VectorXd& mean, const MatrixXd& covar);
+	double gauss(vector<double>& input, const VectorXd& mean,MatrixXd& covar);
 	void k_means(const vector<vector<double>>& input, vector<int>& class_label, const int class_num, const int max_times);
 	double hgauss(vector<double>& input, VectorXd& mean, MatrixXd& covar);
 	void get_mean_covar(vector<vector<double>>& input, vector<double>& mean, vector<vector<double>>& covar);
@@ -69,14 +71,31 @@ private:
 	// NOTE:approximate function
 	double approximate_exp(double val);
 	double approximate_sqrt(double val);
-
+	void print_mat(const MatrixXd& mat);
 public:
-	Unlearn(const int class_num, const int component_num, const double init_beta,
-		const double unlearn_mixing_degree, const double normalize_unlearn, 
-		const double beta_threshold, const double delta_beta, const double complementary_covar_coef);
-	Unlearn(const int class_num, const int component_num, const int data_size, const vector<double> class_beta,
-		const double unlearn_mixing_degree, const double normalize_unlearn,
-		const double beta_threshold, const double delta_beta, const double complementary_covar_coef);
+	Unlearn(
+		const int    class_num, 
+		const int    component_num, 
+		const int    data_size,
+		const double init_beta,
+		const double unlearn_mixing_degree, 
+		const double normalize_unlearn, 
+		const double beta_threshold, 
+		const double delta_beta, 
+		const double complementary_covar_coef
+	);
+	Unlearn(
+		const int            class_num, 
+		const int            component_num, 
+		const int            data_size, 
+		const vector<double> class_beta,
+		const double         unlearn_mixing_degree, 
+		const double         normalize_unlearn,
+		const double         beta_threshold, 
+		const double         delta_beta, 
+		const double         complementary_covar_coef
+	);
+	virtual ~Unlearn();
 	// static Unlearn& newinstance_from_file(const string file_directory);GIVE UP
 	int k_means_test();
 	int gauss_test();
@@ -89,7 +108,11 @@ public:
 	// NOTE:各種精度を算出する．
 	vector<vector<double>>& evaluate(vector<vector<double>> &test_data, const vector<vector<double>> &class_data, const bool output2cs = false);
 	// NOTE:記録用　平均と分散とそのた算出に必要なパラメータを入れた
-	void out_file_mean_covar_params() const;
+	void out_file_mean() const;
+	void out_file_covar() const;
+	void out_file_params() const;
+	void out_file_mix_deg() const;
+	void out_file_data() const;
 	void load_file_mean_covar_mixdeg(const string file_directory); 
 	void set_approximate(bool is_approximate);
 	string get_time_prefix() const;

@@ -14,11 +14,12 @@
 #include<direct.h>
 //#include<cmath>
 using namespace Eigen;
-Unlearn::Unlearn(const int class_num, const int component_num, const double init_beta, 
+Unlearn::Unlearn(const int class_num, const int component_num, const int data_size, const double init_beta,
 	const double unlearn_mixing_degree, const double normalize_unlearn, const double beta_threshold,
 	const double delta_beta, const double complementary_covar_coef)
-	:class_num(class_num)
+	: class_num(class_num)
 	, component_num(component_num)
+	, data_size(data_size)
 	, init_beta(init_beta)
 	, unlearn_mix_deg(unlearn_mixing_degree)
 	, normalize_unlearn(normalize_unlearn)
@@ -36,6 +37,12 @@ Unlearn::Unlearn(const int class_num, const int component_num, const double init
 		cerr << time_prefix << " cannot be created." << endl;
 		exit(-1);
 	}
+	log_ofs.open("C:\\Users\\watanabe\\Desktop\\uekusa\\unleaned_class_aoki\\myrelease.log", ios::app);
+	if (!log_ofs) {
+		cerr << "log file cannot be opened." << endl;
+		exit(-1);
+	}
+	log_ofs << get_date_sec() + " Unlearn instance is created." << endl;
 }
 // create form file version.
 Unlearn::Unlearn(const int class_num, const int component_num, const int data_size, const vector<double> class_beta,
@@ -61,6 +68,17 @@ Unlearn::Unlearn(const int class_num, const int component_num, const int data_si
 		cerr << time_prefix << " cannot be created." << endl;
 		exit(-1);
 	}
+	log_ofs.open("C:\\Users\\watanabe\\Desktop\\uekusa\\unleaned_class_aoki\\myrelease.log", ios::app);
+	if (!log_ofs) {
+		cerr << "log file cannot be opened." << endl;
+		exit(-1);
+	}
+}
+Unlearn::~Unlearn()
+{
+	if (log_ofs) {
+		log_ofs.close();
+	}
 }
 //Unlearn& Unlearn::newinstance_from_file(const string file_directory) {
 //	// prepare variables
@@ -72,7 +90,7 @@ Unlearn::Unlearn(const int class_num, const int component_num, const int data_si
 //	ifs.open(filename); if (ifs.fail()) { throw "can't opne " + filename; }
 //	getline(ifs, line); getline(ifs, line); // NOTE: Pass headers.
 //	vector<string> load_params = split(line, ',');
-//	const int class_num = stoi(load_params[0]);
+//	const int cluster_num = stoi(load_params[0]);
 //	const int component_num = stoi(load_params[1]);
 //	const int data_size = stoi(load_params[2]);
 //	const double unlearn_mix_deg = stod(load_params[3]);
@@ -85,7 +103,7 @@ Unlearn::Unlearn(const int class_num, const int component_num, const int data_si
 //	const double beta = stod(load_params[0]);
 //	ifs.close();
 //
-//	return Unlearn(class_num, component_num, data_size, beta, unlearn_mix_deg, normalize_unlearn,
+//	return Unlearn(cluster_num, component_num, data_size, beta, unlearn_mix_deg, normalize_unlearn,
 //		beta_threshold, delta_beta, ccomplementary_covar_coef);
 //}
 void Unlearn::load_file_mean_covar_mixdeg(const string file_directory) {
@@ -135,6 +153,7 @@ void Unlearn::load_file_mean_covar_mixdeg(const string file_directory) {
 		}
 	}
 	ifs.close();
+	log_ofs << get_date_sec() + " load_file_mean_covar_mixdeg() called." << endl;
 }
 void Unlearn::calc_params(const vector<vector<double>> &input_data,vector<int>& class_data) {
 	for (int cls = 0; cls < class_num; ++cls) {
@@ -161,37 +180,52 @@ void Unlearn::calc_params(const vector<vector<double>> &input_data,vector<int>& 
 			mix_deg[cls][c] = (1 - unlearn_mix_deg) * tmp_component.size() / input_data.size();
 		}
 	}
+	log_ofs << get_date_sec() + " calc_params() called." << endl;
 }
-void Unlearn::k_means(const vector<vector<double>> &input,vector<int> &class_label,const int class_num,const int max_loop) {
+void Unlearn::k_means(const vector<vector<double>> &input,vector<int> &class_label,const int cluster_num, const int max_loop) {
 	// 平均の初期値としてランダムな二つのデータを割り当てている．
-	class_label.resize(input.size());
-	std::random_device rnd;     // 非決定的な乱数生成器でシード生成機を生成
-	std::mt19937 mt(rnd());     //  メルセンヌツイスターの32ビット版、引数は初期シード
-	std::uniform_int_distribution<> rand_index(0, input.size()-1);     // [0, ?] 範囲の一様乱数
-	vector<vector<double>> cls_mean = vector<vector<double>>(class_num, vector<double>(input[0].size(), 0));
-	for (int cls = 0; cls < class_num; ++cls) {
-		cls_mean[cls] = input[rand_index(mt)];
-		// 同じデータが2回現れていないかチェック
-		for (int exist_cls = 0; exist_cls < cls; ++exist_cls) {
-			if (cls_mean[cls] == cls_mean[exist_cls]) {
-				cls--;
-				break;
-			}
+	//class_label.resize(input.size());
+	//std::random_device rnd;     // 非決定的な乱数生成器でシード生成機を生成
+	//std::mt19937 mt(rnd());     //  メルセンヌツイスターの32ビット版、引数は初期シード
+	//std::uniform_int_distribution<> rand_index(0, input.size()-1);     // [0, ?] 範囲の一様乱数
+	//vector<vector<double>> cls_mean = vector<vector<double>>(cluster_num, vector<double>(input[0].size(), 0));
+	//for (int cls = 0; cls < cluster_num; ++cls) {
+	//	cls_mean[cls] = input[rand_index(mt)];
+	//	// 同じデータが2回現れていないかチェック
+	//	for (int exist_cls = 0; exist_cls < cls; ++exist_cls) {
+	//		if (cls_mean[cls] == cls_mean[exist_cls]) {
+	//			cls--;
+	//			break;
+	//		}
+	//	}
+	//}
+	class_label.resize(input.size());// CHECK:resize()でちゃんとサイズ変更されるんだっけ？reserve()とかじゃなかったっけ？
+	if (cluster_num == 1) {
+		for (int in = 0; in < input.size(); ++in) {
+			class_label[in] = 0;
 		}
+		log_ofs << get_date_sec() + " k_means() is called." << endl;
+		return;
+	}
+	vector<vector<double>> cls_mean = vector<vector<double>>(cluster_num, vector<double>(input[0].size(), 0));
+	vector<int> cls_mean_idx = make_rand_array_unique(cluster_num, 0, input[0].size() - 1);
+	for (int i = 0; i < cluster_num; ++i) {
+		cls_mean[i] = input[cls_mean_idx[i]];
 	}
 	// クラス分けが変わらなくなったら終了
 	bool change = true;// クラス分けが変わったかのフラグ
 	int loop = 0;// 繰り返し回数
+	vector<int> cls_data_cnt(cluster_num, 0);
 	while (change && loop < max_loop) {
 		change = false;
 		for (int in = 0; in < input.size(); ++in) {
 			double min_dist = numeric_limits<double>::max();
 			int min_cls = 0;
 			// 全てのクラスについて2乗誤差を比較する
-			for (int cls = 0; cls < class_num; ++cls) {
+			for (int cls = 0; cls < cluster_num; ++cls) {
 				double cls_dist = 0;
 				for (int d = 0; d < input[0].size(); ++d) {
-					cls_dist+=pow(input[in][d] - cls_mean[cls][d], 2);
+					cls_dist += pow(input[in][d] - cls_mean[cls][d], 2);
 				}
 				if (cls_dist < min_dist) {
 					min_dist = cls_dist;
@@ -206,9 +240,10 @@ void Unlearn::k_means(const vector<vector<double>> &input,vector<int> &class_lab
 			}
 		}
 		// クラスの平均値の更新
+		
 		if (change) {
-			vector<vector<double>> cls_sum(class_num, vector<double>(input[0].size(), 0));
-			vector<int> cls_data_cnt(class_num,0);// 後で平均を取る用，そのクラスに割り振られたデータの数
+			vector<vector<double>> cls_sum(cluster_num, vector<double>(input[0].size(), 0));
+			cls_data_cnt = vector<int>(cluster_num,0);// 後で平均を取る用，そのクラスに割り振られたデータの数
 			for (int in = 0; in < input.size(); ++in) {
 				int cls_label = class_label[in];
 				cls_data_cnt[cls_label]++;
@@ -216,14 +251,31 @@ void Unlearn::k_means(const vector<vector<double>> &input,vector<int> &class_lab
 					cls_sum[cls_label][d] += input[in][d];
 				}
 			}
-			for (int cls = 0; cls < class_num; ++cls) {
+			for (int cls = 0; cls < cluster_num; ++cls) {
 				for (int d = 0; d < input[0].size(); ++d) {
 					cls_mean[cls][d] = cls_sum[cls][d] / cls_data_cnt[cls];
 				}
 			}
 		}
+		else {
+			// NOTE:クラス平均値が変化しなくなっても平均が同じになっているときは一つをランダムに変える．
+			for (int cls = 0; cls < cluster_num; ++cls) {
+				if (cls_data_cnt[cls] == 0) {
+					vector<int> tmp = make_rand_array_unique(1, 0, input.size()-1);
+					cls_mean[cls] = input[tmp[0]];
+					change = true;
+				}
+			}
+			// NOTE:for debug
+			if (!change) {
+				for (int cls = 0; cls < cluster_num; ++cls) {
+					cout <<"class:" <<cls << "," << cls_data_cnt[cls] << endl;
+				}
+			}
+		}
 		loop++;
 	}
+	log_ofs << get_date_sec() + " k_means() is called." << endl;
 }
 int Unlearn::k_means_test() {
 	vector<vector<double>> input = vector<vector<double>>(200, vector<double>(2,0));
@@ -240,28 +292,50 @@ int Unlearn::k_means_test() {
 		input[da][1] = ndist1(mt);
 	}
 	vector<int> class_label;
-	int class_num = 2;
+	int cluster_num = 2;
 	int max_times = 1000;
-	k_means(input, class_label, class_num, max_times);
+	k_means(input, class_label, cluster_num, max_times);
 	cout << accumulate(class_label.begin(), class_label.begin() + 100, 0) << endl;
 	cout << accumulate(class_label.begin() + 100, class_label.begin() + 200, 0) << endl;;
 	return 0;
 }
 // ちなみに行列のサイズが大きくなるとdeterminabt()とinverse()が死ぬらしいけど，よくわからん．
-double Unlearn::gauss(vector<double>& input, const VectorXd& mean,const MatrixXd& sigma) {
+double Unlearn::gauss(vector<double>& input, const VectorXd& mean,MatrixXd& sigma) {
 	int input_size = input.size();
 	VectorXd inp = Map<VectorXd>(&input[0],input_size);
 	VectorXd dif = inp - mean;
+	double det_sigma = sigma.determinant();
+	if (det_sigma < 0) {
+		cerr << "determinant sigma is under zero.:" << det_sigma << endl;
+	}
+	// NOTE:行列式が0だったとき用
+	if (det_sigma == 0) {
+		for (int d = 0; d < data_size; ++d) {
+			if (sigma(d, d) == 0) {
+				sigma(d, d) = 10e-20;
+			}
+		}
+		det_sigma = sigma.determinant();
+	}
+	// print_mat(sigma);
 	double kappa; // TODO:change the variable name to understandable name.
-	if(is_approximate)
-		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(sigma.determinant());
-	else
-		kappa = pow(2 * M_PI, -input_size / 2.0) * pow(sigma.determinant(), -1 / 2.0);
+	if (is_approximate)
+		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(det_sigma);
+	else 
+		kappa = pow(2 * M_PI, -input_size / 2.0) * pow(det_sigma, -1 / 2.0);
 	MatrixXd arg_of_exp = -1 * (dif.transpose() * sigma.inverse() * dif) / 2;
 	if (is_approximate) 
 		return  kappa * approximate_exp(arg_of_exp(0, 0));
 	else 
 		return kappa * exp(arg_of_exp(0, 0));
+}
+void Unlearn::print_mat(const MatrixXd& mat) {
+	for (int r = 0; r < mat.rows(); r++) {
+		for (int c = 0; c < mat.cols(); c++) {
+			cout << mat(r, c) << " ";
+		}
+		cout << endl;
+	}
 }
 int Unlearn::gauss_test() {
 	// －1から１まで縦横をそれぞれ100分割した．これをガウス関数に入れて分布が正しいか見る．
@@ -306,10 +380,21 @@ double Unlearn::hgauss(vector<double>& input, VectorXd& mean, MatrixXd& covar) {
 	VectorXd inp = Map<VectorXd>(&input[0], input_size);
 	VectorXd dif = inp - mean;
 	double kappa; // TODO:change the variable name to understandable name.
+
+	double det_covar = covar.determinant();
+	// NOTE:行列式が0だったとき用
+	if (det_covar == 0) {
+		for (int d = 0; d < data_size; ++d) {
+			if (covar(d, d) == 0) {
+				covar(d, d) = 10e-20;
+			}
+		}
+		det_covar = covar.determinant();
+	}
 	if (is_approximate)
-		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(covar.determinant());
+		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(det_covar);
 	else
-		kappa = pow(2 * M_PI, -input_size / 2.0) * pow(covar.determinant(), -1 / 2.0);
+		kappa = pow(2 * M_PI, -input_size / 2.0) * pow(det_covar, -1 / 2.0);
 	MatrixXd widened_covar = complementary_covar_coef * covar;
 	MatrixXd arg_of_exp_former = -1 * (dif.transpose() * widened_covar.inverse() * dif) / 2;
 	MatrixXd arg_of_exp_latter = -1 * (dif.transpose() * covar.inverse() * dif) / 2;
@@ -377,12 +462,16 @@ void Unlearn::get_mean_covar(vector<vector<double>>& input, vector<double> &mean
 		for (int cols = row; cols < deviation_data[0].size(); ++cols) {
 			double var = 0;
 			if (deviation_data.size() > 1) {
-				double var = accumulate(deviation_data.begin(), deviation_data.end(), 0.0, [&row, &cols](double acc, vector<double>& vec) {return acc + vec[row] * vec[cols]; }) / (deviation_data.size() - 1);
+				var = accumulate(deviation_data.begin(), deviation_data.end(), 0.0, [&row, &cols](double acc, vector<double>& vec) {return acc + vec[row] * vec[cols]; }) / (deviation_data.size() - 1);
+			}
+			else {
+				cerr << "deviation_data size is 1" << endl;
 			}
 			covar[row][cols] = var;
 			covar[cols][row] = var;
 		}
 	}
+	log_ofs << get_date_sec() + " get_mean_covar() is called." << endl;
 }
 int Unlearn::get_mean_covar_test() {
 	vector<double> mean;
@@ -411,17 +500,22 @@ int Unlearn::get_mean_covar_test() {
 	return 0;
 }
 void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector<double>> &verification_class_data) {
-	// NOTE: デバック用
+	const unsigned int dont_change_threshold = 10;
 	for (int cls = 0; cls < class_num; ++cls) {
+		// NOTE: デバック用
 		ofstream ofs(time_prefix + "\\class"+to_string(cls)+"beta.csv");
 		check_open_file(ofs, time_prefix + "\\class" + to_string(cls) + "beta.csv");
 		double energy = 0;
 		class_beta[cls] -= delta_beta;// NOTE: 最初に足しちゃうから先にひいてるよ
-		int times = 0;
+		unsigned int times = 0;
+		unsigned int dont_change_cnt = 0;
 		double previous_energy = 0;
+		vector<unsigned int> cls_data_num(class_num, 0);
+		for (const vector<double> v_data : verification_class_data) {
+			cls_data_num[distance(v_data.begin(), max_element(v_data.begin(), v_data.end()))]++;
+		}
 		while (energy <= beta_threshold && (times++) < 150) {
 			energy = 0;// NOTE: エネルギー関数初期化
-			int cls_data_cnt = 0;
 			class_beta[cls] += delta_beta;// NOTE:βをちょっと増やす
 			cout << "class:"<<cls<<", times:" << times << " beta:" << class_beta[cls];// NOTE:デバック用
 			for (int d = 0; d < verification_data.size(); ++d) {
@@ -429,22 +523,28 @@ void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector
 				calc_probability(verification_data[d], prob);
 				// NOTE: 正解がこのクラス
 				if (verification_class_data[d][cls] == 1) {
-					cls_data_cnt++;
 					// NOTE: このクラスの確率が一番高い
 					if (distance(prob.begin(), max_element(prob.begin(), prob.end())) == cls + 1) {
 						energy += 1;
 					}
 				}
 			}
-			energy /= cls_data_cnt;
+			energy /= cls_data_num[cls];
 			cout << " " << TO_STRING(energy) << ":" << energy << endl;
-			string rec = to_string(times) + "," + to_string(class_beta[cls]) + "," + to_string(energy);
-			ofs << rec << endl;
-			/*if (energy <= previous_energy) 
-				break;*/
+			ofs << to_string(times) + "," + to_string(class_beta[cls]) + "," + to_string(energy) << endl;
+			// NOTE:dont_change_threshold回recallが同じだったら学習を止める．
+			if (energy <= previous_energy) {
+				dont_change_cnt += 1;
+			}else {
+				dont_change_cnt = 0;
+			}
+			if (dont_change_cnt >= dont_change_threshold) {
+				break;
+			}
 			previous_energy = energy;
 		}
 	}
+	log_ofs << get_date_sec() + " learn_beta() is called." << endl;
 }
 void Unlearn::calc_probability(vector<double> &input_data, vector<double> &rtn_cls_probability) {
 	//ofstream uln_ofs(time_prefix + "\\unlearn_hgauss_likelihood.csv");
@@ -476,7 +576,7 @@ void Unlearn::calc_probability(vector<double> &input_data, vector<double> &rtn_c
 			//uln_ofs <<  output_hga <<",";
 		}
 		/*learn_class_ofs << class_probability[cls] << ",";
-		if (cls >= class_num-1) {
+		if (cls >= cluster_num-1) {
 			learn_class_ofs << endl;
 		}*/
 		sum_all_probability += class_probability[cls];
@@ -501,11 +601,10 @@ void Unlearn::open_class_csv(const string filename) {
 	class_ofs.open(filename);	if (class_ofs.fail()) {throw "can't opne " + filename;}
 }
 // 確率分布を出すのに必要な各種の値をファイルに保存する．
-void Unlearn::out_file_mean_covar_params() const{
+void Unlearn::out_file_mean() const {
 	// 平均の保存
-	string filename = time_prefix + "\\mean.csv";
-	ofstream ofs(filename); if (ofs.fail()) {throw "Can't open " + filename;}
-	const int data_size = mean[0][0].size();
+	const string filename = time_prefix + "\\mean.csv";
+	ofstream ofs(filename); if (ofs.fail()) { throw "Can't open " + filename; }
 	for (int cls = 0; cls < class_num; ++cls) {
 		for (int com = 0; com < component_num; ++com) {
 			for (double mea : mean[cls][com]) {
@@ -515,12 +614,15 @@ void Unlearn::out_file_mean_covar_params() const{
 		}
 	}
 	ofs.close();
+}
+
+void Unlearn::out_file_covar() const {
 	// 共分散の保存
-	filename = time_prefix + "\\covar.csv";
-	ofs.open(filename); if (ofs.fail()) { throw "can't opne " + filename; }
+	const string filename = time_prefix + "\\covar.csv";
+	ofstream ofs(filename); if (ofs.fail()) { throw "Can't open " + filename; }
 	for (int cls = 0; cls < class_num; ++cls) {
 		for (int com = 0; com < component_num; ++com) {
-			for (int dat = 0; dat < data_size; ++dat) {
+			for (int dat = 0; dat < covar[cls][com].size(); ++dat) {
 				for (double cov : covar[cls][com][dat]) {
 					ofs << cov << ",";
 				}
@@ -529,12 +631,14 @@ void Unlearn::out_file_mean_covar_params() const{
 		}
 	}
 	ofs.close();
+}
+void Unlearn::out_file_params() const {
 	// その他の値の保存
-	filename = time_prefix + "\\params.csv";
-	ofs.open(filename); if (ofs.fail()) { throw "can't opne " + filename; }
-	ofs << "class_num,component_num,data_size,unlearn_mixing_degree,normalize_unlearn,beta_threshold,delta_beta,complementary_covar_coef" << endl;
+	const string filename = time_prefix + "\\params.csv";
+	ofstream ofs(filename); if (ofs.fail()) { throw "Can't open " + filename; }
+	ofs << "cluster_num,component_num,data_size,unlearn_mixing_degree,normalize_unlearn,beta_threshold,delta_beta,complementary_covar_coef" << endl;
 	ofs << class_num << "," << component_num << "," << data_size << "," << unlearn_mix_deg << ","
-		<< normalize_unlearn << ","<< beta_threshold<< "," << delta_beta << "," 
+		<< normalize_unlearn << "," << beta_threshold << "," << delta_beta << ","
 		<< complementary_covar_coef << endl;
 	ofs << "beta " << endl;
 	for (int cls = 0; cls < class_num; ++cls) {
@@ -542,15 +646,23 @@ void Unlearn::out_file_mean_covar_params() const{
 	}
 	ofs << endl;
 	ofs.close();
+}
+void Unlearn::out_file_mix_deg() const {
 	// 混合度の値．
-	filename = time_prefix + "\\mix_deg.csv";
-	ofs.open(filename); if (ofs.fail()) { throw "can't opne " + filename; }
+	const string filename = time_prefix + "\\mix_deg.csv";
+	ofstream ofs(filename); if (ofs.fail()) { throw "Can't open " + filename; }
 	for (int cls = 0; cls < class_num; ++cls) {
 		for (int com = 0; com < component_num; ++com) {
 			ofs << mix_deg[cls][com] << "," << endl;
 		}
 	}
 	ofs.close();
+}
+void Unlearn::out_file_data() const{
+	out_file_mean();
+	out_file_covar();
+	out_file_params();
+	out_file_mix_deg();
 }
 /*
  * NOTE:calculate accuracy and precision, recall, F-measure
@@ -645,8 +757,8 @@ vector<vector<double>>& Unlearn::evaluate(vector<vector<double>>& test_data, con
 		double micro_average = accumulate(class_true_positive.begin(), class_true_positive.end(), 0.0) / test_data.size();
 		ofs << "micro_average," << micro_average << endl;
 	}
+	log_ofs << get_date_sec() + " evaluate() is called." << endl;
 	return result;
-	
 }
 
 double Unlearn::approximate_exp(double val) {
