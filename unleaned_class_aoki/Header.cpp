@@ -174,6 +174,15 @@ void Unlearn::calc_params(const vector<vector<double>> &input_data,vector<int>& 
 					tmp_component.push_back(cls_input[d]);
 				}
 			}
+			// for debug
+			/*ofstream ofs(time_prefix +"\\component_datas_cls" + to_string(cls) + "_com" + to_string(c) + ".csv");
+			for (int da = 0; da < tmp_component.size(); ++da) {
+				for (int dsize = 0; dsize < data_size; ++dsize) {
+					ofs << tmp_component[da][dsize] << ",";
+				}
+				ofs << endl;
+			}
+			ofs.close();*/
 			// クラス　コンポーネントごとのデータを使って平均と分散を作る
 			get_mean_covar(tmp_component, mean[cls][c], covar[cls][c]);
 			// ついでに混同度alphaを設定する
@@ -208,7 +217,7 @@ void Unlearn::k_means(const vector<vector<double>> &input,vector<int> &class_lab
 		return;
 	}
 	vector<vector<double>> cls_mean = vector<vector<double>>(cluster_num, vector<double>(input[0].size(), 0));
-	vector<int> cls_mean_idx = make_rand_array_unique(cluster_num, 0, input[0].size() - 1);
+	vector<int> cls_mean_idx = make_rand_array_unique(cluster_num, 0, input.size() - 1);
 	for (int i = 0; i < cluster_num; ++i) {
 		cls_mean[i] = input[cls_mean_idx[i]];
 	}
@@ -267,11 +276,11 @@ void Unlearn::k_means(const vector<vector<double>> &input,vector<int> &class_lab
 				}
 			}
 			// NOTE:for debug
-			if (!change) {
+			/*if (!change) {
 				for (int cls = 0; cls < cluster_num; ++cls) {
 					cout <<"class:" <<cls << "," << cls_data_cnt[cls] << endl;
 				}
-			}
+			}*/
 		}
 		loop++;
 	}
@@ -300,30 +309,19 @@ int Unlearn::k_means_test() {
 	return 0;
 }
 // ちなみに行列のサイズが大きくなるとdeterminabt()とinverse()が死ぬらしいけど，よくわからん．
-double Unlearn::gauss(vector<double>& input, const VectorXd& mean,MatrixXd& sigma) {
+double Unlearn::gauss(vector<double>& input, const VectorXd& mean,MatrixXd& covar) {
 	int input_size = input.size();
 	VectorXd inp = Map<VectorXd>(&input[0],input_size);
 	VectorXd dif = inp - mean;
-	double det_sigma = sigma.determinant();
-	if (det_sigma < 0) {
-		cerr << "determinant sigma is under zero.:" << det_sigma << endl;
-	}
-	// NOTE:行列式が0だったとき用
-	if (det_sigma == 0) {
-		for (int d = 0; d < data_size; ++d) {
-			if (sigma(d, d) == 0) {
-				sigma(d, d) = 10e-20;
-			}
-		}
-		det_sigma = sigma.determinant();
-	}
-	// print_mat(sigma);
+	double det_covar = covar.determinant();
+
+	// print_mat(covar);
 	double kappa; // TODO:change the variable name to understandable name.
 	if (is_approximate)
-		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(det_sigma);
+		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(det_covar);
 	else 
-		kappa = pow(2 * M_PI, -input_size / 2.0) * pow(det_sigma, -1 / 2.0);
-	MatrixXd arg_of_exp = -1 * (dif.transpose() * sigma.inverse() * dif) / 2;
+		kappa = pow(2 * M_PI, -input_size / 2.0) * pow(det_covar, -1 / 2.0);
+	MatrixXd arg_of_exp = -1 * (dif.transpose() * covar.inverse() * dif) / 2;
 	if (is_approximate) 
 		return  kappa * approximate_exp(arg_of_exp(0, 0));
 	else 
@@ -382,15 +380,6 @@ double Unlearn::hgauss(vector<double>& input, VectorXd& mean, MatrixXd& covar) {
 	double kappa; // TODO:change the variable name to understandable name.
 
 	double det_covar = covar.determinant();
-	// NOTE:行列式が0だったとき用
-	if (det_covar == 0) {
-		for (int d = 0; d < data_size; ++d) {
-			if (covar(d, d) == 0) {
-				covar(d, d) = 10e-20;
-			}
-		}
-		det_covar = covar.determinant();
-	}
 	if (is_approximate)
 		kappa = pow(2 * M_PI, -input_size / 2.0) / approximate_sqrt(det_covar);
 	else
@@ -510,6 +499,7 @@ void Unlearn::learn_beta(vector<vector<double>> &verification_data,vector<vector
 		unsigned int times = 0;
 		unsigned int dont_change_cnt = 0;
 		double previous_energy = 0;
+		// NOTE:Count datas of each class.
 		vector<unsigned int> cls_data_num(class_num, 0);
 		for (const vector<double> v_data : verification_class_data) {
 			cls_data_num[distance(v_data.begin(), max_element(v_data.begin(), v_data.end()))]++;
@@ -559,20 +549,28 @@ void Unlearn::calc_probability(vector<double> &input_data, vector<double> &rtn_c
 	for (int cls = 0; cls < class_num; ++cls) {
 		for (int com = 0; com < component_num; ++com) {
 			// クラス確率の計算用，平均と分散の変換
-			VectorXd mean_eigen = Map<VectorXd>(&mean[cls][com][0], mean[cls][com].size());
+			VectorXd mean_vec = Map<VectorXd>(&mean[cls][com][0], mean[cls][com].size());
 			vector<double> tmp;// eigenのMap<>の機能を
 			for (int col = 0; col < covar[cls][com].size(); ++col) {
 				for (int row = 0; row < covar[cls][com][0].size(); ++row) {
 					tmp.push_back(covar[cls][com][row][col]);
 				}
 			}
-			MatrixXd sigma_eigen = Map<MatrixXd>(&tmp[0], covar[cls][com].size(), covar[cls][com][0].size());
+			MatrixXd sigma_mat = Map<MatrixXd>(&tmp[0], covar[cls][com].size(), covar[cls][com][0].size());
+			// NOTE:行列式が0だったとき用
+			double det_covar = sigma_mat.determinant();
+			while (det_covar <= 0) {
+				for (int d = 0; d < data_size; ++d) {
+					sigma_mat(d, d) += 1e-6;
+				}
+				det_covar = sigma_mat.determinant();
+			}
 			// 学習クラスの確率算出
-			MatrixXd beta_sigma = class_beta[cls] * sigma_eigen;
-			class_probability[cls] += mix_deg[cls][com] * gauss(input_data, mean_eigen, beta_sigma);
+			MatrixXd beta_sigma = class_beta[cls] * sigma_mat;
+			class_probability[cls] += mix_deg[cls][com] * gauss(input_data, mean_vec, beta_sigma);
 			// 未学習クラスの確率算出
-			unlearn_probability *= hgauss(input_data, mean_eigen, sigma_eigen);
-			double output_hga = hgauss(input_data, mean_eigen, sigma_eigen);
+			unlearn_probability *= hgauss(input_data, mean_vec, sigma_mat);
+			double output_hga = hgauss(input_data, mean_vec, sigma_mat);
 			//uln_ofs <<  output_hga <<",";
 		}
 		/*learn_class_ofs << class_probability[cls] << ",";
