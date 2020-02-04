@@ -15,10 +15,10 @@ private:
 	const int component_num;
 	// data_size(demension?) of one data. will use only creating instance from file.
 	int data_size;
-	// 平均値　mean[class][component][data]
-	vector<vector<vector<double>>> mean;
-	// 共分散行列 covar[class][component][data][data]
-	vector<vector<vector<vector<double>>>> covar;
+	// 平均値　mean[class][component]
+	vector<vector<VectorXd>> mean;
+	// 共分散行列 covar[class][component]
+	vector<vector<MatrixXd>> covar;
 	// 混合度 alpha[class][component]
 	vector<vector<double>> mix_deg;
 	// 分散に対する補正項の初期値
@@ -53,6 +53,8 @@ private:
 	ofstream log_ofs;
 	// For file output, time prefix
 	const string time_prefix;
+	//
+	// const string output_dir;
 	// set data size to create instance from file.
 	void set_data_size(int data_size);
 	/**
@@ -65,7 +67,7 @@ private:
 	double gauss(vector<double>& input, const VectorXd& mean,MatrixXd& covar);
 	void k_means(const vector<vector<double>>& input, vector<int>& class_label, const int class_num, const int max_times);
 	double hgauss(vector<double>& input, VectorXd& mean, MatrixXd& covar);
-	void get_mean_covar(vector<vector<double>>& input, vector<double>& mean, vector<vector<double>>& covar);
+	void get_mean_covar(vector<vector<double>>& input, VectorXd& mean, MatrixXd& covar);
 	// void test();GIVE UP
 	void open_class_csv(const string filename);
 	// NOTE:approximate function
@@ -82,7 +84,8 @@ public:
 		const double normalize_unlearn, 
 		const double beta_threshold, 
 		const double delta_beta, 
-		const double complementary_covar_coef
+		const double complementary_covar_coef,
+		const string output_dir
 	);
 	Unlearn(
 		const int            class_num, 
@@ -93,20 +96,21 @@ public:
 		const double         normalize_unlearn,
 		const double         beta_threshold, 
 		const double         delta_beta, 
-		const double         complementary_covar_coef
+		const double         complementary_covar_coef,
+		const string         output_dir
 	);
 	virtual ~Unlearn();
 	// static Unlearn& newinstance_from_file(const string file_directory);GIVE UP
 	int k_means_test();
 	int gauss_test();
 	int hgauss_test();
-	int get_mean_covar_test();
-	void calc_params(const vector<vector<double>>& input_data, vector<int>& class_data);
-	void learn_beta(vector<vector<double>>& verification_data, vector<vector<double>>& verification_class_data);
+	// int get_mean_covar_test();
+	void calc_params(const vector<vector<double>>& input_data, vector<vector<int>>& class_data);
+	void learn_beta(vector<vector<double>>& verification_data, vector<vector<int>>& verification_class_data);
 	// NOTE:入力から事後確率を計算する．input_dataは学習データ長, class_probabilityはclass_num+1の長さでindex0が未学習クラス．
 	void calc_probability(vector<double>& input_data, vector<double>& rtn_cls_probability);
 	// NOTE:各種精度を算出する．
-	vector<vector<double>>& evaluate(vector<vector<double>> &test_data, const vector<vector<double>> &class_data, const bool output2cs = false);
+	vector<vector<double>>& evaluate(vector<vector<double>> &test_data, const vector<vector<int>> &class_data, const bool output2cs = false);
 	// NOTE:記録用　平均と分散とそのた算出に必要なパラメータを入れた
 	void out_file_mean() const;
 	void out_file_covar() const;
@@ -116,6 +120,7 @@ public:
 	void load_file_mean_covar_mixdeg(const string file_directory); 
 	void set_approximate(bool is_approximate);
 	string get_time_prefix() const;
+	void set_output_dir(const string directory_path);
 };
 inline void Unlearn::set_data_size(int data_size) {
 	this->data_size = data_size;

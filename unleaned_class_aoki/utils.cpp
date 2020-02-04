@@ -6,6 +6,7 @@
 #include<filesystem>
 #include<random>
 #include<algorithm>
+#include<vector>
 std::string get_date_sec() {
 	time_t t = time(nullptr);
 	struct tm lt;
@@ -40,7 +41,7 @@ std::vector<std::string> split(const std::string& instr, const char delimiter) {
 	std::istringstream stream(instr);
 	std::string field;
 	std::vector<std::string> result;
-	while (getline(stream, field, delimiter)) {
+	while (std::getline(stream, field, delimiter)) {
 		result.push_back(field);
 	}
 	return result;

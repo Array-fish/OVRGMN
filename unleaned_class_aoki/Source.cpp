@@ -9,14 +9,17 @@
 #include<stdexcept>
 #include<chrono>
 #include<thread>
-vector<vector<double>> get_vector_from_file(const string filename);
 int main() {
 	// データを取り込み　学習データ，その正解クラスのデータ
 	const string data_folder = "C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\EMG_signals_for_forearm_classification\\";
-	vector<vector<double>> learn_data      = get_vector_from_file(data_folder + "EMG1_train_data.csv");
-	vector<vector<double>> class_data      = get_vector_from_file(data_folder + "EMG1_train_cls.csv");
-	vector<vector<double>> test_data       = get_vector_from_file(data_folder + "EMG1_test_data.csv");
-	vector<vector<double>> test_class_data = get_vector_from_file(data_folder + "EMG1_test_cls.csv");
+	const string learn_data_path = data_folder + "EMG1_train_data2.csv";
+	const string learn_cls_path = data_folder  + "EMG1_train_cls2.csv";
+	const string test_data_path = data_folder  + "EMG1_test_data2.csv";
+	const string test_cls_path = data_folder   + "EMG1_test_cls2.csv";
+	vector<vector<double>> learn_data   = get_vector_from_file<double>(learn_data_path);
+	vector<vector<int>> class_data      = get_vector_from_file<int>(learn_cls_path);
+	vector<vector<double>> test_data    = get_vector_from_file<double>(test_data_path);
+	vector<vector<int>> test_class_data = get_vector_from_file<int>(test_cls_path);
 #ifndef CREATE_FROM_FILE
 	// モデルの条件
 	std::random_device rnd;     // 非決定的な乱数生成器でシード生成機を生成
@@ -39,15 +42,40 @@ int main() {
 	const int repeat_num = 50;
 	for (int re = 0; re < repeat_num; ++re) {
 		// データを取り込み　学習データ，その正解クラスのデータ
-		vector<vector<double>> learn_data = get_vector_from_file(data_folder + "EMG1_train_data.csv");
-		vector<vector<double>> class_data = get_vector_from_file(data_folder + "EMG1_train_cls.csv");
-		vector<vector<double>> test_data = get_vector_from_file(data_folder + "EMG1_test_data.csv");
-		vector<vector<double>> test_class_data = get_vector_from_file(data_folder + "EMG1_test_cls.csv");
+		vector<vector<double>> learn_data   = get_vector_from_file<double>(learn_data_path);
+		vector<vector<int>> class_data      = get_vector_from_file<int>(learn_cls_path);
+		vector<vector<double>> test_data    = get_vector_from_file<double>(test_data_path);
+		vector<vector<int>> test_class_data = get_vector_from_file<int>(test_cls_path);
 		Unlearn uln(class_num, component_num, data_size, beta_0(engine), unlearn_mix_deg,
-			normalize_unlearn, beta_threshold, delta_beta, complementary_covar_coef);
+			normalize_unlearn, beta_threshold, delta_beta, complementary_covar_coef,
+			"C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\EMG_signals_for_forearm_classification\\data2\\bo_app\\");
+		vector<int> verification_index;
+		vector<int>cls_data_num(class_num);
+		for (int d = 0; d < learn_data.size(); d++) {
+			cls_data_num[distance(class_data[d].begin(), max_element(class_data[d].begin(), class_data[d].end()))]++;
+		}
+		int class_first_index = 0;
+		for (int cls = 0; cls < class_num; ++cls) {
+			vector<int> class_index = make_rand_array_unique(cls_data_num[cls] / 2, 0, cls_data_num[cls] - 1);
+			for (const int idx : class_index) {
+				verification_index.push_back(class_first_index + idx);
+			}
+			class_first_index += cls_data_num[cls];
+		}
+		vector<vector<double>> verification_data;
+		vector<vector<int>> verification_class_data;
+		for (int i : verification_index) {
+			verification_data.push_back(learn_data[i]);
+			verification_class_data.push_back(class_data[i]);
+		}
+		// ここ途中でindexError出ないように後ろから消してます．
+		for (int i = verification_index.size() - 1; i >= 0; --i) {
+			learn_data.erase(learn_data.begin() + verification_index[i]);
+			class_data.erase(class_data.begin() + verification_index[i]);
+		}
 #else
 	// NOTE:ここは出力部との対応が取れているか確かめること．
-	const string folder_path = "C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\art_data\\no_app";
+	const string folder_path = "C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\EMG_signals_for_forearm_classification\\data2\\no_app";
 	vector<string> file_names;
 	if (!getFileNames(folder_path, file_names)) {
 		cerr << "Cannot find file names." << endl;
@@ -81,10 +109,11 @@ int main() {
 		ifs.close();
 
 		Unlearn uln(class_num, component_num, data_size, class_beta, unlearn_mix_deg, normalize_unlearn,
-			beta_threshold, delta_beta, ccomplementary_covar_coef);
+			beta_threshold, delta_beta, ccomplementary_covar_coef,
+			"C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\EMG_signals_for_forearm_classification\\data2\\pr_app\\");
 		uln.load_file_mean_covar_mixdeg(file_directory);
 #endif
-	//uln.set_approximate(true);
+	uln.set_approximate(true);
 
 	// 学習データを　beta出すための検証データと普通の最尤法のための学習データに分ける．
 	// とりあえず学習データの半分を検証用データに使う
@@ -103,7 +132,7 @@ int main() {
 		class_first_index += cls_data_num[cls];
 	}
 	vector<vector<double>> verification_data;
-	vector<vector<double>> verification_class_data;
+	vector<vector<int>> verification_class_data;
 	for (int i : verification_index) {
 		verification_data.push_back(learn_data[i]);
 		verification_class_data.push_back(class_data[i]);
@@ -116,18 +145,7 @@ int main() {
 #ifndef CREATE_FROM_FILE
 	// 学習データをクラスごとにk-means法に放り込んでクラス分け，
 	// クラス，コンポーネントごとにパラメータの値を出す．
-	// class_data_altはcalc_params()関数を作った時の気分でクラスの入力をindexにしてしまったので変換している
-	// ex) [0 0 1] -> [2]
-	vector<int> class_data_alt;
-	for (int d = 0; d < class_data.size(); ++d) {
-		for (int cls = 0; cls < class_num; ++cls) {
-			if (class_data[d][cls] == 1) {
-				class_data_alt.push_back(cls);
-				break;
-			}
-		}
-	}
-	uln.calc_params(learn_data, class_data_alt);
+	uln.calc_params(learn_data, class_data);
 	uln.out_file_mean();
 	uln.out_file_covar();
 	uln.out_file_mix_deg();
@@ -146,23 +164,4 @@ int main() {
 	//uln.hgauss_test();
 	//uln.get_mean_covar_test();
 	return 0;
-}
-// csvファイルの内容を2次元vector<double>に変換する
-vector<vector<double>> get_vector_from_file(const string filename) {
-	ifstream ifs(filename);
-	if (ifs.fail()) {
-		cerr << "Can't open " + filename << endl;
-		exit(-1);
-	}
-	string str, str1;
-	vector<vector<double>> data;
-	while (std::getline(ifs, str)) {
-		stringstream ss{ str };
-		vector<double> tmp;
-		while (std::getline(ss, str1, ',')) {
-			tmp.push_back(stod(str1));
-		}
-		data.push_back(tmp);
-	}
-	return data;
 }

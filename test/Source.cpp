@@ -5,30 +5,21 @@
 #include<fstream>
 #include<string>
 #include<sstream>
+#include<Eigen/Core>
 using namespace std;
+using namespace Eigen;
 void get_mean_covar(vector<vector<double>>& input, vector<double>& mean, vector<vector<double>>& covar);
 vector<vector<double>> get_vector_from_file(const string filename);
 int main() {
-	const string data_folder = "C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\EMG_signals_for_forearm_classification\\";
-	vector<vector<double>> learn_data = get_vector_from_file(data_folder + "EMG1_train_data.csv");
-	vector<double> mean;
-	vector<vector<double>> covar;
-	vector<vector<double>> cls_data;
-	for (int i = 0; i < 1500; ++i) {
-		cls_data.push_back(learn_data[i]);
+	VectorXd a=VectorXd::Zero(3);
+	VectorXd b = VectorXd::Zero(3);
+	for (int i = 0; i < 3; ++i) {
+		a(i) = i + 1;
+		b(i) = i + 4;
 	}
-	get_mean_covar(cls_data, mean, covar);
-	ofstream ofs("mean_.csv");
-	for (auto me : mean) {
-		ofs << me << endl;
-	}
-	ofstream ofs1("covar_.csv");
-	for (auto row : covar) {
-		for (auto var : row) {
-			ofs1 << var << ",";
-		}
-		ofs1 << endl;
-	}
+	MatrixXd c = a * b.transpose();
+	cout <<  c << endl;
+	return 0;
 }
 void get_mean_covar(vector<vector<double>>& input, vector<double>& mean, vector<vector<double>>& covar) {
 	const int input_data_size = input[0].size();
