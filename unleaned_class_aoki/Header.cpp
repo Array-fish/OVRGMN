@@ -37,7 +37,7 @@ Unlearn::Unlearn(const int class_num, const int component_num, const int data_si
 		cerr << time_prefix << " cannot be created." << endl;
 		exit(-1);
 	}
-	log_ofs.open("C:\\Users\\watanabe\\Desktop\\uekusa\\unleaned_class_aoki\\myrelease.log", ios::app);
+	log_ofs.open(log_file_path, ios::app);
 	if (!log_ofs) {
 		cerr << "log file cannot be opened." << endl;
 		exit(-1);
@@ -68,7 +68,7 @@ Unlearn::Unlearn(const int class_num, const int component_num, const int data_si
 		cerr << time_prefix << " cannot be created." << endl;
 		exit(-1);
 	}
-	log_ofs.open("C:\\Users\\watanabe\\Desktop\\uekusa\\unleaned_class_aoki\\myrelease.log", ios::app);
+	log_ofs.open(log_file_path, ios::app);
 	if (!log_ofs) {
 		cerr << "log file cannot be opened." << endl;
 		exit(-1);

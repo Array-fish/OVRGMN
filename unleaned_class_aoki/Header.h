@@ -50,6 +50,7 @@ private:
 	// デバック用, Flor use ofstream through multiple methods.
 	ofstream class_ofs;
 	// for logging release
+	const string log_file_path = "C:\\Users\\uekus\\Documents\\OVRGMN\\unleaned_class_aoki\\myrelease.log";
 	ofstream log_ofs;
 	// For file output, time prefix
 	const string time_prefix;
