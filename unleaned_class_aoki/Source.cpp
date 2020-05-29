@@ -10,6 +10,9 @@
 #include<thread>
 int main() {
 	// データを取り込み　学習データ，その正解クラスのデータ
+	// NOTE:学習データはデータ数×入力次元、学習データのラベルはone-hotでデータ数×クラス数
+	//      テストデータはデータ数×入力次元、テストデータのラベルはone-hotでデータ数×(クラス数+1)。
+	//      ただしテストデータのラベルについては1列目が未学習データで2列目からクラス1,2,3と続く
 	const string data_folder = "C:\\Users\\uekus\\Documents\\FPGA\\OVRFPGA\\jupyter\\";
 	const int tryId = 4;
 	const int dataId = 0;
@@ -29,7 +32,7 @@ int main() {
 	//     double normalize_unlearn, double beta_threshold, double delta_beta, double complementary_covar_coef);
 	// beta:乱数, unlearn_mixing_degree:alpha_0 これは適当．今は0.01,  normalize_unlearn:未学習クラスの正規化項．これは論文の値
 	// beta_threshold:βを決めるときの閾値．論文の値, beta_delta:βを決めるときの変化量．論文の値, 
-	// complementary_covar_coef:h_gaussを算出するときの値．論文の値,
+	// complementary_covar_coef:h_gaussを算出するときの値．論文の値, output_dir:パラメータとか識別結果を出力するディレクトリ
 	const int    class_num         = 3;
 	const int    component_num     = 2;
 	const int    data_size         = 3;
@@ -71,13 +74,13 @@ int main() {
 			verification_data.push_back(learn_data[i]);
 			verification_class_data.push_back(class_data[i]);
 		}
-		// ここ途中でindexError出ないように後ろから消してます．
+		// NOTE:ここ途中でindexError出ないように後ろから消してます．
 		for (int i = verification_index.size() - 1; i >= 0; --i) {
 			learn_data.erase(learn_data.begin() + verification_index[i]);
 			class_data.erase(class_data.begin() + verification_index[i]);
 		}
 		// 学習データをクラスごとにk-means法に放り込んでクラス分け，
-	// クラス，コンポーネントごとにパラメータの値を出す．
+		// クラス，コンポーネントごとにパラメータの値を出す．
 		uln.calc_params(learn_data, class_data);
 		uln.out_file_mean();
 		uln.out_file_covar();
@@ -87,7 +90,7 @@ int main() {
 		uln.out_file_params();
 		uln.evaluate(test_data, test_class_data, true);
 	}
-	// NOTE: 識別部だけ近似
+	// 出力されたパラメータを使って識別を行う
 	// NOTE:ここは出力部との対応が取れているか確かめること．
 	//const string folder_path = "C:\\Users\\watanabe\\Desktop\\uekusa\\unlearned_files\\EMG_signals_for_forearm_classification\\try" + to_string(tryId) + "\\data"+to_string(dataId)+"\\no_app";
 	//vector<string> file_names;
@@ -139,7 +142,8 @@ int main() {
 		Unlearn uln(class_num, component_num, data_size, beta_0(engine), unlearn_mix_deg,
 			normalize_unlearn, beta_threshold, delta_beta, complementary_covar_coef,
 			"C:\\Users\\uekus\\Documents\\FPGA\\OVRFPGA\\jupyter\\try" + to_string(tryId) + "\\data" + to_string(dataId) + "\\bo_app\\");
-		uln.set_approximate(true);
+		// uln.set_approximate(true); // NOTE:ここで近似のありなしを切り替える
+
 		// 学習データを　beta出すための検証データと普通の最尤法のための学習データに分ける．
 		// とりあえず学習データの半分を検証用データに使う
 		// NOTE:前提として学習データにおいて同じクラスのデータは1塊に連続しているとする．
